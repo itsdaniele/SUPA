@@ -1,4 +1,4 @@
-Generates point cloud showers in batches (one file for each batch) and optionally converts them to cell grid (images).
+Generates point cloud showers in batches (one file for each batch) and optionally converts them to grid representation(images).
 
 ## Requirements
 
@@ -7,7 +7,6 @@ Generates point cloud showers in batches (one file for each batch) and optionall
 * numpy
 * tqdm
 * h5py
-
 
 ## Usage
 
@@ -37,6 +36,10 @@ optional arguments:
 
 ## Cell Grid Conversion
 
-Need to specify the bin width and number of bins (currently hardcoded).
+Need to specify the bin width and number of bins (currently hardcoded)
 
+## Canonical Datasets
 
+The datasets can be downloaded from the following [link](https://drive.switch.ch/index.php/s/JYIQ9iQlnzoG1jR).
+
+They can be loaded with `torch.load()` utility. Each dataset is a python list of data points (or showers). Each shower is represented as a list of layers, and each layer is a list of points. Each point is a list of three features (x and y coordinates and the energy E). The script `SimulatorData.py` provides pytorch dataloaders for reading the SUPA datasets.

@@ -25,7 +25,7 @@ class ShowerGenerator(object):
 
         self.readout_layers = inv_map
 
-        self.pc = [[] for i in range(3)]
+        self.pc = [[] for i in range(len(readout_layers))]
 
         self.curr_layer = 0
 
@@ -40,10 +40,10 @@ class ShowerGenerator(object):
         # sample if stops, decays, or passes
         p = np.random.uniform(0,1)
 
-        p_stop = [0.9*(x/27)**1.25 for x in range(28)] 
+        p_stop = [1.0*(x/27)**0.75 for x in range(28)]
 
         # if stops
-        if p < p_stop[layer] and layer>6:
+        if p < p_stop[layer] and layer > 6:
             # read-out
             self.G.nodes[node]['active'] = False
 
@@ -51,11 +51,15 @@ class ShowerGenerator(object):
                 self.pc[read_out].append(np.append(position, energy))
 
         # if decays
-        elif p < 0.8:
+        #elif p < 1:
+        elif (p < p_stop[layer] + 0.3 and layer > 6) or (p < 0.6 and layer <= 6):
 
             # sample opening angle and deviation angle
             theta = np.random.uniform(np.pi/16, np.pi/32)
+            #theta = np.random.uniform(np.pi/24, np.pi/24)
+            
             delta = np.random.uniform(-theta/4, theta/4)
+            #delta = np.random.uniform(0, 0)
 
             # sample if direction is x or y
             direction = np.random.uniform(0,1)*np.pi*2
@@ -80,7 +84,6 @@ class ShowerGenerator(object):
             direction_2 = rot_mat@direction_2
 
             assert direction_1[-1] > 0 and direction_2[-1] > 0
-
 
             position_1 = position + (direction_1*(self.delta_z/direction_1[-1]))[:2]
             position_2 = position + (direction_2*(self.delta_z/direction_2[-1]))[:2]
@@ -213,14 +216,23 @@ if __name__ == "__main__":
 
         for n in tqdm(range(N)):
             a = ShowerGenerator(energy=args.initial_energy)
+            zero_hits = False
 
             for i in range(24):
                 a.generate()
                 
-            
-            if len(a.pc[0]) == 0 or len(a.pc[1]) == 0 or len(a.pc[2]) == 0:
+            num_layers = len(a.pc)
+
+            # optionally remove events with zero hits in any layer
+            for layer in range(num_layers):
+                if len(a.pc[layer]) == 0:# or len(a.pc[1]) == 0 or len(a.pc[2]) == 0:
+                    zero_hits = True
+
+            if zero_hits:
+                print('Skipped')
                 continue
 
+            
             all_pcs.append(a.pc)
             energy.append(np.array([args.initial_energy]))
 
@@ -247,6 +259,9 @@ if __name__ == "__main__":
 
     scale = 1
     grids_config = [[np.linspace(-5,5,(4-1)*scale + 1), np.linspace(-5,5,(97-1)*scale + 1)], [np.linspace(-10,10,(13-1)*scale + 1), np.linspace(-10,10,(13-1)*scale + 1)], [np.linspace(-15,15,(13-1)*scale + 1), np.linspace(-15,15,(7-1)*scale + 1)]]
+    
+    #grids_config = [[np.linspace(-10,10,(13-1)*scale + 1), np.linspace(-10,10,(13-1)*scale + 1)]]
+
 
     if save_grids:
 
@@ -272,6 +287,7 @@ if __name__ == "__main__":
             for layer in range(len(all_pcs[0])):
                 layer_num += 1
                 all_showers_layer = [x[layer] for x in all_pcs]
+                
                 img_arr = pc2grid(all_showers_layer, grids_config[layer])
 
                 if layer in img_arr_all_layers.keys():
@@ -285,7 +301,6 @@ if __name__ == "__main__":
         layer_num=0
         for layer in range(len(all_pcs[0])):
             layer_num += 1
-            print(img_arr_all_layers[layer][0].shape)
             f.create_dataset(f'layer_{layer}', data=np.concatenate(img_arr_all_layers[layer], 0)*1000) # converting to MeV with *1000
 
         energies = np.concatenate(E_arr_all_layers, 0)
